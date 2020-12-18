@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "api/v1/news";
+
+package news;
+
+service News {
+  rpc GetNews(NewsRequest) returns (NewsReply);
+}
+
+message NewsRequest {
+  string newId = 1;
+}
+
+message NewsReply {
+  string newId = 1;
+  string title = 2;
+  string context = 3;
+}
