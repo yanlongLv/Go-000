@@ -1,6 +1,6 @@
-module github.com/Go-000/Week02/jike
+module github.com/Go-000/Week02
 
-go 1.14
+go 1.15
 
 require (
 	github.com/gin-gonic/gin v1.6.3
