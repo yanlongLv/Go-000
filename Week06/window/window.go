@@ -24,7 +24,7 @@ func (b *Bucket) append(val float64) {
 
 // Window ..
 type Window struct {
-	widnow []Bucket
+	Widnow []Bucket
 	size   int
 }
 
@@ -42,26 +42,26 @@ func NewWindow(size int) *Window {
 			next:   &buckets[nextIndex],
 		}
 	}
-	return &Window{widnow: buckets, size: size}
+	return &Window{Widnow: buckets, size: size}
 }
 
 //ResetBucket ..
 func (w *Window) ResetBucket(index int) {
-	for index := range w.widnow {
-		w.widnow[index].reset()
+	for index := range w.Widnow {
+		w.Widnow[index].reset()
 	}
 }
 
 //Add ..
 func (w *Window) Add(index int, val float64) {
-	if w.widnow[index].Count == 0 {
-		w.widnow[index].append(val)
+	if w.Widnow[index].Count == 0 {
+		w.Widnow[index].append(val)
 		return
 	}
-	w.widnow[index].add(0, val)
+	w.Widnow[index].add(0, val)
 }
 
 //Append ..
 func (w *Window) Append(index int, val float64) {
-	w.widnow[index].append(val)
+	w.Widnow[index].append(val)
 }
