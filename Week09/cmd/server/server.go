@@ -63,7 +63,7 @@ func send(conn *net.TCPConn, dataChan chan *encoding.Response) {
 		if d == nil {
 			break
 		}
-		encoding.Write(&encoding.Response{Serial: d.Serial, Payload: d.Payload}, conn, serverWriteLock)
+		encoding.Write(&encoding.Response{Serial: d.Serial, Payload: d.Payload}, conn, &serverWriteLock)
 	}
 }
 
