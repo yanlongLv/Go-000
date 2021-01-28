@@ -14,52 +14,54 @@ import (
 
 //Server ..
 type Server struct {
-	conn         *net.TCPConn
-	responseChan chan string
+	listener     *net.TCPListener
+	responseChan chan *encoding.Response
 }
 
 var serverWriteLock sync.Mutex
 
-func server() error {
-	tcp, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8980")
+func newServer() (server *Server, err error) {
+	tcp, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8989")
 	if err != nil {
-		return errors.Wrap(err, "resolve rtcp address")
+		return nil, errors.Wrap(err, "resolve rtcp address")
 	}
 	listener, err := net.ListenTCP("tcp", tcp)
 	if err != nil {
-		return errors.Wrap(err, "error tcp listen")
+		return nil, errors.Wrap(err, "error tcp listen")
 	}
-	defer listener.Close()
-	go closeListener(listener)
+	responseChan := make(chan *encoding.Response, 10)
+	return &Server{listener: listener, responseChan: responseChan}, nil
+}
+
+func (s *Server) start() error {
 	for {
-		conn, err := listener.AcceptTCP()
+		conn, err := s.listener.AcceptTCP()
 		if err != nil {
 			return errors.Wrap(err, "listen accept tcp")
 		}
-		dataChan := make(chan *encoding.Response)
-		go listen(conn, dataChan)
-		go send(conn, dataChan)
+		go s.listen(conn)
+		go s.send(conn)
 	}
 }
 
-func listen(conn *net.TCPConn, dataChan chan *encoding.Response) {
+func (s *Server) listen(conn *net.TCPConn) {
 	for {
 		r, err := encoding.Reader(conn)
 		if err != nil {
 			fmt.Println(errors.Wrap(err, "listen err tcp"))
 		}
 		if r.Payload == "close" {
-			dataChan <- r
+			s.responseChan <- r
 			conn.Close()
-			close(dataChan)
+			close(s.responseChan)
 			break
 		}
-		dataChan <- r
+		s.responseChan <- r
 	}
 }
 
-func send(conn *net.TCPConn, dataChan chan *encoding.Response) {
-	for d := range dataChan {
+func (s *Server) send(conn *net.TCPConn) {
+	for d := range s.responseChan {
 		if d == nil {
 			break
 		}
@@ -67,9 +69,21 @@ func send(conn *net.TCPConn, dataChan chan *encoding.Response) {
 	}
 }
 
-func closeListener(listener *net.TCPListener) {
+func (s *Server) closeListener() {
 	ch := make(chan os.Signal, 10)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGHUP)
 	<-ch
-	listener.Close()
+	s.listener.Close()
+}
+
+func main() {
+	ser, err := newServer()
+	if err != nil {
+		panic(err)
+	}
+	err = ser.start()
+	if err != nil {
+		fmt.Print("error", err)
+	}
+	go ser.closeListener()
 }

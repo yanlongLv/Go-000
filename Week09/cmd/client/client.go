@@ -13,38 +13,51 @@ var clientWriteLock sync.Mutex
 var seq uint32 = 0
 var data = make(chan string, 10)
 
-func client() error {
+//Client ...
+type Client struct {
+	conn *net.TCPConn
+	seq  uint32
+	data chan string
+}
+
+//NewClient ..
+func NewClient() (cli *Client, err error) {
 	tcp, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8989")
 	if err != nil {
-		return errors.Wrap(err, "client resolve tcp")
+		return nil, errors.Wrap(err, "client resolve tcp")
 	}
 	conn, err := net.DialTCP("tcp", nil, tcp)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	go response(conn)
-	go request(conn, data)
-	return nil
+	dataChan := make(chan string, 10)
+	return &Client{conn: conn, seq: 0, data: dataChan}, nil
 }
 
-func response(conn *net.TCPConn) {
+func (c *Client) start() {
+	go c.response()
+	go c.request()
+
+}
+
+func (c *Client) response() {
 	for {
-		r, err := encoding.Reader(conn)
+		r, err := encoding.Reader(c.conn)
 		if err != nil {
 			fmt.Println(err.Error())
 			break
 		}
 		if r.Payload == "close" {
-			conn.Close()
+			c.conn.Close()
 			break
 		}
-		fmt.Println("client :", r.Payload)
+		fmt.Println("client :", r. )
 	}
 }
 
-func request(conn *net.TCPConn, data chan string) {
-	for d := range data {
-		err := encoding.Write(&encoding.Response{Serial: seq, Payload: d}, conn, &clientWriteLock)
+func (c *Client) request() {
+	for d := range c.data {
+		err := encoding.Write(&encoding.Response{Serial: c.seq, Payload: d}, c.conn, &clientWriteLock)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -53,6 +66,17 @@ func request(conn *net.TCPConn, data chan string) {
 }
 
 func main() {
-
-	client()
+	cli, err := NewClient()
+	if err != nil {
+		panic(err)
+	}
+	cli.start()
+	for {
+		paylod := "hi"
+		cli.data <- paylod
+		if paylod == "close" {
+			fmt.Println("recieve close command")
+			break
+		}
+	}
 }
